@@ -1,0 +1,101 @@
+;======================================================================================================
+;macro: 		delay between two states
+;limitation:	time on 2 bytes(max 0FFFFH)
+;TIME:		 	bigger time, bigger delay
+delay MACRO TIME
+	LOCAL	P1,P2
+	PUSH	DX
+	PUSH 	CX
+	MOV		DX,TIME
+P1:	MOV		CX,0FFFH
+P2:	DEC		CX
+	JNZ		P2
+	DEC		DX		
+	JNZ		P1
+	POP		CX
+	POP		DX
+ENDM
+;======================================================================================================
+;macro:			write a number to screen
+;limitation:	max 2bytes
+;AX:			must load the number in AX before calling the macro
+WRITE MACRO
+LOCAL NEXT1, PRINT, PRINTARE
+PUSH AX
+PUSH BX
+PUSH CX
+PUSH DX
+MOV DX, 0
+MOV BX, 0 
+MOV CX, 10
+NEXT1:
+	DIV ZECE1			;divide by 10(word) AX - quotient DX - remainder
+	PUSH DX				;push remainder on stack , first remainder is the last digit , so it must be printed last
+	MOV DX, 0H
+	INC BX
+	CMP AX, 0			;check if the number(quotient) reacher 0(no more digits)
+	JZ PRINT			
+LOOP NEXT1
+PRINT:
+	MOV CX, BX			;CX - number of digits of the initial number
+PRINTARE:
+	POP DX				;extract the remainders from the stack
+	ADD DL, 48
+	MOV AH, 02H			;print the digit to the screen
+	INT 21H
+LOOP PRINTARE
+POP DX
+POP CX
+POP BX
+POP AX
+ENDM
+;======================================================================================================
+;macro:			read a string
+;STRING:		string to be read
+READ_STRING MACRO STRING
+LOCAL NEXT
+PUSH AX
+PUSH SI
+LEA SI, STRING		;load address to SI
+NEXT:
+MOV AH, 01H			;read character
+INT 21H
+CMP AL, 0DH			;check if enter was pressed
+JE EXIT				;if enter => finished
+MOV [SI], AL		;place character to corresponding location
+INC SI
+JMP NEXT
+EXIT:
+MOV BYTE PTR [SI], '$'		;place end of string($) to the end of our string
+POP SI
+POP AX
+ENDM
+;======================================================================================================
+;macro: reset and clear screen
+reset_default_screen MACRO
+MOV		AH,00H	
+MOV		AL,03H
+INT		10H
+ENDM
+;======================================================================================================
+;macro: print message to given row and column
+;DX:	address of the string to print
+print_string MACRO X,Y
+set_cursor X,Y
+MOV		AH,09H
+INT		21H
+ENDM
+;======================================================================================================
+;macro: set cursor to a specific row and column
+;X:		column of the cursor
+;Y: 	row of the cursor
+set_cursor MACRO X,Y
+PUSH	DX
+MOV		DL,X		;screen column
+MOV		DH,Y		;screen row
+MOV		AH,2		;parameter to set cursor's position
+MOV		BH,0		;page number
+INT 	10H
+POP		DX
+ENDM
+;======================================================================================================
